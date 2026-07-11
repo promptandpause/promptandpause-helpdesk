@@ -3,36 +3,18 @@ set -e
 
 cd /app/nocobase
 
-echo "[custom] === NETWORK DIAGNOSTICS ==="
+echo "[custom] === DIAGNOSTICS ==="
 echo "[custom] hostname:" $(hostname 2>/dev/null || echo "N/A")
-echo "[custom] DB_HOST=$DB_HOST"
-echo "[custom] DB_PORT=$DB_PORT"
-echo "[custom] DB_USER=$DB_USER"
-echo "[custom] DB_DATABASE=$DB_DATABASE"
-echo "[custom] testing DNS resolution of $DB_HOST..."
-getent hosts "$DB_HOST" 2>/dev/null || nslookup "$DB_HOST" 2>/dev/null || echo "[custom] DNS lookup failed"
-echo "[custom] testing TCP connection to $DB_HOST:$DB_PORT..."
-timeout 5 sh -c "echo > /dev/tcp/$DB_HOST/$DB_PORT" 2>&1 && echo "[custom] TCP connection SUCCESS" || echo "[custom] TCP connection FAILED"
+echo "[custom] DB_HOST=$DB_HOST DB_PORT=$DB_PORT DB_USER=$DB_USER DB_DATABASE=$DB_DATABASE"
+echo "[custom] testing DNS: $(getent hosts $DB_HOST 2>/dev/null || echo 'FAIL')"
+echo "[custom] testing psql connection..."
+PGPASSWORD="$DB_PASSWORD" timeout 10 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_DATABASE" -c "SELECT 1 as test" 2>&1 || echo "[custom] psql connect FAILED"
 
 echo "[custom] === POSTINSTALL ==="
 yarn nocobase postinstall 2>&1
 
-echo "[custom] === TESTING PG CONNECTION WITH NODE ==="
-node -e "
-const { Client } = require('pg');
-const c = new Client({
-  host: process.env.DB_HOST || 'postgres.railway.internal',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'promptandpause',
-  database: process.env.DB_DATABASE || 'railway',
-  ssl: { rejectUnauthorized: false }
-});
-c.connect().then(() => c.query('SELECT 1 as test').then(r => { console.log('PG direct connect OK:', JSON.stringify(r.rows)); process.exit(0); })).catch(e => { console.error('PG direct connect FAILED:', e.message); process.exit(1); });
-" 2>&1 || echo "[custom] PG direct connect attempt failed"
-
 echo "[custom] === DB:AUTH ==="
-timeout 30 yarn nocobase db:auth 2>&1 || echo "[custom] db:auth timed out or failed"
+timeout 60 yarn nocobase db:auth 2>&1 || echo "[custom] db:auth timed out or failed"
 
 echo "[custom] generating instance id"
 yarn nocobase generate-instance-id 2>&1 || echo "[custom] instance id exists"
