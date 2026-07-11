@@ -1,8 +1,5 @@
 FROM nocobase/nocobase:latest-full
 
-RUN mkdir -p /etc/nginx/sites-enabled /etc/nginx/conf.d
+ENV APP_PORT=13000
 
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
-
-CMD ["/app/docker-entrypoint.sh"]
+EXPOSE 13000
