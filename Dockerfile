@@ -1,11 +1,13 @@
 FROM nocobase/nocobase:latest-full
 
 ENV APP_PORT=13000
+ENV NOCOBASE_PROXY_PROVIDER=nginx
 
-COPY docker-entrypoint.sh /app/docker-entrypoint-custom.sh
-RUN chmod +x /app/docker-entrypoint-custom.sh && \
-    mkdir -p /etc/nginx/sites-enabled /etc/nginx/conf.d
+RUN mkdir -p /etc/nginx/sites-enabled /etc/nginx/conf.d && \
+    rm -f /etc/nginx/conf.d/default.conf
+
+WORKDIR /app/nocobase
 
 EXPOSE 13000
 
-CMD ["/app/docker-entrypoint-custom.sh"]
+CMD yarn nocobase postinstall && yarn nocobase db:auth && yarn start --quickstart
